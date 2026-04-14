@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  email        String        @unique
+  password     String
+  role         String        @default("USER")
+  avatar       String?
+  phone        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now())
+  
+  doctorProfile DoctorProfile?
+  consultations Consultation[] @relation("PatientConsultations")
+  messages     Message[]
+}
+
+model Category {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  icon         String?
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  
+  doctors      DoctorProfile[]
+}
+
+model DoctorProfile {
+  id           Int           @id @default(autoincrement())
+  userId       Int           @unique
+  categoryId   Int
+  realName     String
+  title        String
+  hospital     String
+  expertise    String
+  description  String?
+  certificate  String
+  status       String        @default("PENDING")
+  price        Float         @default(0)
+  consultationCount Int      @default(0)
+  rating       Float         @default(5.0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now())
+  
+  user         User          @relation(fields: [userId], references: [id])
+  category     Category      @relation(fields: [categoryId], references: [id])
+  consultations Consultation[] @relation("DoctorConsultations")
+}
+
+model Consultation {
+  id           Int           @id @default(autoincrement())
+  userId       Int
+  doctorId     Int
+  title        String
+  description  String?
+  status       String        @default("PENDING")
+  createdAt    DateTime      @default(now())
+  completedAt  DateTime?
+  
+  user         User          @relation("PatientConsultations", fields: [userId], references: [id])
+  doctor       DoctorProfile @relation("DoctorConsultations", fields: [doctorId], references: [id])
+  messages     Message[]
+}
+
+model Message {
+  id             Int           @id @default(autoincrement())
+  consultationId Int
+  senderId       Int
+  content        String
+  type           String        @default("text")
+  isRead         Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  
+  consultation   Consultation  @relation(fields: [consultationId], references: [id])
+  sender         User          @relation(fields: [senderId], references: [id])
+}
