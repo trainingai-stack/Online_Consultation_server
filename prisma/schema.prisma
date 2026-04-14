@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
+  password  String
+  nickname  String?
+  avatar    String?
+  role      String   @default("USER") // USER, DOCTOR, ADMIN
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE, BANNED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联
+  doctorProfile DoctorProfile?
+  consultationsAsPatient Consultation[] @relation("PatientConsultations")
+  consultationsAsDoctor  Consultation[] @relation("DoctorConsultations")
+  messages   Message[]
+  
+  @@map("users")
+}
+
+// 医生资质表
+model DoctorProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  realName        String
+  idCard          String
+  licenseNo       String   @unique
+  licenseImage    String
+  hospital        String?
+  department      String?
+  title           String?
+  specialty       String?
+  introduction    String?
+  categoryId      Int?
+  verifyStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  verifyRemark    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // 关联
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category DoctorCategory? @relation(fields: [categoryId], references: [id])
+  
+  @@map("doctor_profiles")
+}
+
+// 医生分类表
+model DoctorCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  icon        String?
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联
+  doctors DoctorProfile[]
+  
+  @@map("doctor_categories")
+}
+
+// 问诊表
+model Consultation {
+  id          Int       @id @default(autoincrement())
+  patientId   Int
+  doctorId    Int
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  symptoms    String?
+  diagnosis   String?
+  prescription String?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 关联
+  patient  User      @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor   User      @relation("DoctorConsultations", fields: [doctorId], references: [id], onDelete: Cascade)
+  messages Message[]
+  
+  @@map("consultations")
+}
+
+// 消息表
+model Message {
+  id             Int      @id @default(autoincrement())
+  consultationId Int
+  senderId       Int
+  type           String   @default("TEXT") // TEXT, IMAGE, VOICE
+  content        String
+  mediaUrl       String?
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  // 关联
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@map("messages")
+}
