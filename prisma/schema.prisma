@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  USER
+  DOCTOR
+}
+
+enum ConsultationStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum QualificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  password      String
+  nickname      String?
+  avatar        String?
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  doctorProfile   DoctorProfile?
+  qualifications  Qualification[]
+  consultationsAsUser  Consultation[]  @relation("UserConsultations")
+  consultationsAsDoctor Consultation[] @relation("DoctorConsultations")
+  messagesSent    Message[]        @relation("SentMessages")
+  messagesReceived Message[]       @relation("ReceivedMessages")
+
+  @@map("users")
+}
+
+model DoctorCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  doctors     DoctorProfile[]
+
+  @@map("doctor_categories")
+}
+
+model DoctorProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        DoctorCategory @relation(fields: [categoryId], references: [id])
+  title           String?
+  hospital        String?
+  department      String?
+  introduction    String?
+  specialty       String?
+  consultationFee Float    @default(0)
+  rating          Float    @default(5.0)
+  consultationCount Int    @default(0)
+  isVerified      Boolean  @default(false)
+  isOnline        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("doctor_profiles")
+}
+
+model Qualification {
+  id              String              @id @default(uuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            String
+  certificateNo   String?
+  certificateImage String
+  status          QualificationStatus @default(PENDING)
+  reviewNote      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("qualifications")
+}
+
+model Consultation {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation("UserConsultations", fields: [userId], references: [id], onDelete: Cascade)
+  doctorId    String
+  doctor      User               @relation("DoctorConsultations", fields: [doctorId], references: [id], onDelete: Cascade)
+  status      ConsultationStatus @default(PENDING)
+  chiefComplaint String?
+  diagnosis   String?
+  prescription String?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  rating      Int?
+  review      String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  messages    Message[]
+
+  @@map("consultations")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId     String
+  receiver       User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content        String
+  type           String   @default("text")
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@map("messages")
+}
